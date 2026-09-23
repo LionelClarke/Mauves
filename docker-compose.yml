@@ -1,0 +1,51 @@
+services:
+  wave:
+    build: .
+    image: mauves-wave
+    container_name: mauves-wave
+    ports:
+      - "3000:3000"
+    environment:
+      TZ: Europe/Paris
+      # Wave band at the Mauves gauge (m)
+      WAVE_UPPER: "5.25"
+      WAVE_LOWER: "4.75"
+    volumes:
+      # The project source, so code changes are picked up on restart
+      - ./:/app
+      # Keep the image's node_modules (not your computer's)
+      - /app/node_modules
+      # Gauge data, tide pages, sessions and the fitted model
+      - wave-data:/data
+    # Rebuild on start, so code edits take effect with "docker compose restart"
+    command: sh -c "npm run build && npm start"
+    restart: unless-stopped
+
+  # Claude Code, in its own container. Not started by "docker compose up":
+  # build it with ./build.sh and run it with ./claude.sh.
+  claude:
+    profiles: ["claude"]
+    build:
+      context: .
+      dockerfile: Dockerfile.claude
+    image: mauves-claude
+    environment:
+      TZ: Europe/Paris
+      # Optional: use an API key instead of logging in to Claude Code
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      # The project source, so changes Claude Code makes are saved on your computer
+      - ./:/app
+      # Keep the image's node_modules (not your computer's)
+      - /app/node_modules
+      # The website's data, read-only (for local runs use a copy in ./data)
+      - wave-data:/data:ro
+      # Claude Code login, settings and conversation history
+      - claude-data:/home/node/.claude
+    working_dir: /app
+    stdin_open: true
+    tty: true
+
+volumes:
+  wave-data:
+  claude-data:

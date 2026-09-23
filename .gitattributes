@@ -1,0 +1,19 @@
+# Normalise line endings; LF in the repo and working tree
+* text=auto eol=lf
+
+# Shell scripts must stay LF to run in the containers
+*.sh text eol=lf
+Dockerfile* text eol=lf
+
+# Generated files: no diffs, collapsed on GitHub
+package-lock.json -diff linguist-generated
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary

@@ -337,7 +337,7 @@ export function forecast(days = 7, flow?: number): Forecast {
 
 // ---------------------------------------------------------------- sessions
 export interface SessionCheck {
-  start: number; end: number; note: string; index: number;
+  start: number; end: number | null; note: string; index: number;
   hStart: number; hEnd: number; trendStart: number; trendEnd: number; min: number; max: number;
   lows: Low[]; observed: [number, number][]; outsideBand: boolean;
   model: { coef: number | null; q: number; hmin: number; window: [number, number] | null; predictedLow: number; snLow: number } | null;
@@ -347,13 +347,14 @@ export function checkSessions(): { checks: SessionCheck[]; upper: { value: numbe
   const d = getData(), m = loadModel<Model>();
   const checks = loadSessions().map((s, index): SessionCheck => {
     const tr = (t: number) => d.H.at(t + 20 * MIN) - d.H.at(t - 20 * MIN);
-    const st = d.H.stats(s.start, s.end);
-    const lows = detectLows(d.H, s.start - 9 * HOUR, s.end + 9 * HOUR);
+    const last = s.end ?? s.start;   // without an end, only the start is checked
+    const st = d.H.stats(s.start, last);
+    const lows = detectLows(d.H, s.start - 9 * HOUR, last + 9 * HOUR);
     const observed = lows.map((l) => observedWindow(d.H, l.tmin)).filter((w): w is [number, number] =>
-      !!w && w[1] > s.start - 3 * HOUR && w[0] < s.end + 3 * HOUR);
+      !!w && w[1] > s.start - 3 * HOUR && w[0] < last + 3 * HOUR);
     let model: SessionCheck["model"] = null;
     if (isCurrent(m) && lows.length) {
-      const mid = (s.start + s.end) / 2;
+      const mid = (s.start + last) / 2;
       const lo = lows.reduce((a, b) => Math.abs(b.tmin - mid) < Math.abs(a.tmin - mid) ? b : a);
       const e = ebbFor(ebbsBetween(m, lo.tmin - 16 * HOUR, lo.tmin), lo.tmin);
       const q = d.Q.stats(lo.tmin - m.qlagH * HOUR - 12 * HOUR, lo.tmin - m.qlagH * HOUR + 12 * HOUR).mean;
@@ -364,7 +365,7 @@ export function checkSessions(): { checks: SessionCheck[]; upper: { value: numbe
           predictedLow: low.tmin, snLow: e.tlw };
       }
     }
-    return { ...s, index, hStart: d.H.at(s.start), hEnd: d.H.at(s.end), trendStart: tr(s.start), trendEnd: tr(s.end),
+    return { ...s, index, hStart: d.H.at(s.start), hEnd: s.end !== null ? d.H.at(s.end) : NaN, trendStart: tr(s.start), trendEnd: s.end !== null ? tr(s.end) : NaN,
       min: st.min, max: st.max, lows, observed, model,
       outsideBand: st.count > 0 && (st.max > UPPER + 0.15 || st.min < LOWER - 0.15) };
   });

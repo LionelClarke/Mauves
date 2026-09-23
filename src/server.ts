@@ -96,9 +96,11 @@ app.get("/sessions", (req, res) => res.send(sessionsPage(checkSessions(), banner
 app.post("/sessions", (req, res) => {
   const { date, start, end, note } = req.body as Record<string, string>;
   const d = parseYmd(date);
-  const [sh, sm] = start.split(":").map(Number), [eh, em] = end.split(":").map(Number);
-  const s = localMs(d.year, d.month, d.day, sh, sm), e = localMs(d.year, d.month, d.day, eh, em);
-  if (!(e > s)) return redirectWith(res, "/sessions", { text: "The end time must be after the start time.", error: true });
+  const [sh, sm] = start.split(":").map(Number);
+  const s = localMs(d.year, d.month, d.day, sh, sm);
+  let e: number | null = null;
+  if (end) { const [eh, em] = end.split(":").map(Number); e = localMs(d.year, d.month, d.day, eh, em); }
+  if (e !== null && !(e > s)) return redirectWith(res, "/sessions", { text: "The end time must be after the start time.", error: true });
   const all = loadSessions().filter((x) => !(x.start === s && x.end === e));
   saveSessions([...all, { start: s, end: e, note: (note ?? "").slice(0, 200) }]);
   redirectWith(res, "/sessions", { text: "Session recorded." });

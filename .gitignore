@@ -10,6 +10,9 @@ data/
 .env
 .env.*
 
+# Half-written files (store.ts writes a .tmp, then renames it)
+*.tmp
+
 # Logs
 *.log
 npm-debug.log*

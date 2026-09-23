@@ -36,6 +36,9 @@ maree.info doesn't allow automated downloading, so you copy its pages yourself.
 Record sessions you saw on the **Sessions** page. Each one is checked against the gauge
 and the model, and together they show where the wave really starts and stops.
 
+Sessions are saved in `sessions.json` in this folder, not in the Docker volume, so commit
+it to keep them in git.
+
 ## Claude Code
 
 Claude Code runs in its own container (`mauves-claude`), apart from the website. Build it
@@ -72,7 +75,7 @@ If Claude adds npm packages, rebuild both images with fresh dependencies:
 
 | Volume | Contents |
 |---|---|
-| `wave-data` | gauge readings, pasted tide pages, sessions, fitted model |
+| `wave-data` | gauge readings, pasted tide pages, fitted model |
 | `claude-data` | Claude Code login, settings, history |
 
 Both survive `docker compose down` and rebuilds. `docker compose down -v` deletes them.

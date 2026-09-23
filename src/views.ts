@@ -176,10 +176,10 @@ export function calendarPage(year: number, month: number, al: Almanac | null, of
 const trendWord = (x: number) => x < -0.01 ? "falling" : x > 0.01 ? "rising" : "steady";
 
 export function sessionsPage(res: { checks: SessionCheck[]; upper: { value: number; n: number }; lower: { value: number; n: number } }, banner?: { text: string; error?: boolean }): string {
-  const items = res.checks.slice().reverse().map((c) => `<div class="check"><h3>${esc(fmt(c.start, "cccc d LLLL yyyy"))}, ${hm(c.start)} to ${hm(c.end)}</h3>
+  const items = res.checks.slice().reverse().map((c) => `<div class="check"><h3>${esc(fmt(c.start, "cccc d LLLL yyyy"))}, ${c.end !== null ? `${hm(c.start)} to ${hm(c.end)}` : `from ${hm(c.start)}`}</h3>
     ${c.note ? `<p>${esc(c.note)}</p>` : ""}
     ${Number.isFinite(c.hStart) ? `<dl><dt>Gauge at start</dt><dd>${c.hStart.toFixed(2)} m, ${trendWord(c.trendStart)}</dd>
-    <dt>Gauge at end</dt><dd>${c.hEnd.toFixed(2)} m, ${trendWord(c.trendEnd)}</dd>
+    ${Number.isFinite(c.hEnd) ? `<dt>Gauge at end</dt><dd>${c.hEnd.toFixed(2)} m, ${trendWord(c.trendEnd)}</dd>` : ""}
     ${c.lows.map((l) => `<dt>Low at Mauves</dt><dd>${hm(l.tmin)}, ${l.hmin.toFixed(2)} m</dd>`).join("")}
     <dt>Gauge in the band</dt><dd>${c.observed.map((w) => win(w)).join(" and ") || "never"}</dd>
     ${c.model ? `<dt>Model</dt><dd>${win(c.model.window)} (${c.model.coef !== null ? `coef. ${c.model.coef.toFixed(0)}, ` : ""}Montjean ${c.model.q.toFixed(0)} m³/s, low ${c.model.hmin.toFixed(2)} m)</dd>
@@ -193,7 +193,7 @@ export function sessionsPage(res: { checks: SessionCheck[]; upper: { value: numb
   <p>Record sessions you saw. Each one is checked against the gauge and the model, and together they show where the wave really starts and stops.</p>
   <form class="inline" method="post" action="/sessions">
     <label>Day<input type="date" name="date" required></label><label>Start<input type="time" name="start" required></label>
-    <label>End<input type="time" name="end" required></label><label>Note<input name="note" maxlength="200"></label>
+    <label>End (optional)<input type="time" name="end"></label><label>Note<input name="note" maxlength="200"></label>
     <button type="submit">Record session</button></form>
   <h2>Where the wave starts and stops</h2>
   <dl><dt>Starts at</dt><dd>${band(res.upper)} (the app uses ${UPPER} m)</dd><dt>Stops at</dt><dd>${band(res.lower)} (the app uses ${LOWER} m)</dd></dl>

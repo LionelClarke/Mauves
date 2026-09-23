@@ -1,17 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DATA_DIR } from "./config.js";
+import { DATA_DIR, SESSIONS_FILE } from "./config.js";
 
 /** Time series: epoch ms and values (heights in m, flows in m3/s). */
 export interface Series { t: number[]; v: number[] }
-export interface Session { start: number; end: number; note: string }
+/** A session seen on the river; end is null when only the start was noted. */
+export interface Session { start: number; end: number | null; note: string }
 
 const cache = new Map<string, unknown>();
 let version = 0;
 /** Increases every time something is written; used to invalidate derived caches. */
 export const dataVersion = () => version;
 
-function file(name: string) { return path.join(DATA_DIR, name); }
+/** A file in DATA_DIR, or an absolute path as is. */
+function file(name: string) { return path.resolve(DATA_DIR, name); }
 
 function readJson<T>(name: string, fallback: T): T {
   if (cache.has(name)) return cache.get(name) as T;
@@ -21,10 +23,10 @@ function readJson<T>(name: string, fallback: T): T {
   return value;
 }
 
-function writeJson(name: string, value: unknown) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+function writeJson(name: string, value: unknown, pretty = false) {
+  fs.mkdirSync(path.dirname(file(name)), { recursive: true });
   const tmp = file(name + ".tmp");
-  fs.writeFileSync(tmp, JSON.stringify(value));
+  fs.writeFileSync(tmp, pretty ? JSON.stringify(value, null, 2) + "\n" : JSON.stringify(value));
   fs.renameSync(tmp, file(name));
   cache.set(name, value);
   version++;
@@ -43,9 +45,17 @@ export function mergeSeries(name: string, add: Series): Series {
   return merged;
 }
 
-export const loadSessions = () => readJson<Session[]>("sessions.json", []);
+export function loadSessions(): Session[] {
+  // sessions used to be kept in DATA_DIR: move them over the first time
+  const old = file("sessions.json");
+  if (!cache.has(SESSIONS_FILE) && !fs.existsSync(SESSIONS_FILE) && fs.existsSync(old)) {
+    try { saveSessions(JSON.parse(fs.readFileSync(old, "utf8")) as Session[]); } catch { /* unreadable: start empty */ }
+  }
+  return readJson<Session[]>(SESSIONS_FILE, []);
+}
+/** Written indented, one field per line, so changes read well in git. */
 export function saveSessions(s: Session[]) {
-  writeJson("sessions.json", [...s].sort((a, b) => a.start - b.start));
+  writeJson(SESSIONS_FILE, [...s].sort((a, b) => a.start - b.start), true);
 }
 
 /** Files already read from MAREGRAPHIE_DIR: name -> "size:mtime". */

@@ -39,7 +39,8 @@ Mauves-sur-Loire (France). Owner: Lionel. Language of the UI: English.
 ## Code map
 
 - `src/config.ts` constants (band via WAVE_UPPER / WAVE_LOWER env vars)
-- `src/store.ts` JSON files in DATA_DIR (/data in Docker, `./data` otherwise)
+- `src/store.ts` JSON files in DATA_DIR (/data in Docker, `./data` otherwise), except recorded sessions: `sessions.json`
+  in the project folder (`SESSIONS_FILE`), kept in git. Local test runs write to it too: point `SESSIONS_FILE` at a copy.
 - `src/time.ts` Europe/Paris wall-clock helpers (luxon); all stored times are epoch ms
 - `src/maregraphie.ts` SHOM gauge file import; `src/harmonic.ts` tide harmonic fit, prediction, ebbs
 - `src/almanac.ts` tide calendar (`/calendar`): a month of Saint-Nazaire high/low waters from the harmonic fit, and

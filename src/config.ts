@@ -11,6 +11,8 @@ export const MONTJEAN = "M530001010";   // Loire at Montjean-sur-Loire (non tida
 export const TZ = "Europe/Paris";
 
 export const DATA_DIR = path.resolve(process.env.DATA_DIR ?? "data");
+/** Recorded sessions live in the project folder, not DATA_DIR, so they are kept in git. */
+export const SESSIONS_FILE = path.resolve(process.env.SESSIONS_FILE ?? "sessions.json");
 export const PORT = Number(process.env.PORT ?? 3000);
 /** OFFLINE=1 disables all downloads (useful for development and tests). */
 export const OFFLINE = process.env.OFFLINE === "1";

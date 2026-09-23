@@ -53,7 +53,8 @@ Mauves-sur-Loire (France). Owner: Lionel. Language of the UI: English.
 - `src/jobs.ts` background downloads and refits (every 30 min)
 - `src/chart.ts` SVG gauge staff and week charts (level, Montjean flow); `src/views.ts` HTML pages; `src/server.ts` Express routes
 - `old/` the earlier Python prototype (`vague_mauves.py`), kept for reference only; not used.
-- `maregraphie/` SHOM tide-gauge files (SensorML `.sml` + yearly JSON, ~50 MB each). Don't `cat`
+- `maregraphie/` SHOM tide-gauge files (SensorML `.sml` + yearly JSON, ~50 MB each, stored with Git LFS; `git-lfs` is not installed in the Claude container, so
+  don't `git add` them from there). Don't `cat`
   the JSON files whole.
 
 ## How the pieces fit

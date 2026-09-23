@@ -6,9 +6,6 @@ dist/
 # Local copy of the site's data (DATA_DIR=./data)
 data/
 
-# SHOM tide-gauge files: downloaded by hand, ~50 MB each
-maregraphie/*.json
-
 # Environment and secrets
 .env
 .env.*

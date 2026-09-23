@@ -5,6 +5,9 @@
 *.sh text eol=lf
 Dockerfile* text eol=lf
 
+# SHOM tide-gauge files (~50 MB each) are stored with Git LFS
+maregraphie/*.json filter=lfs diff=lfs merge=lfs -text
+
 # Generated files: no diffs, collapsed on GitHub
 package-lock.json -diff linguist-generated
 

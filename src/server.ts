@@ -28,7 +28,7 @@ app.get("/", (req, res) => {
   const banner = bannerFrom(req) ?? busy();
   try {
     const f = forecast(7, flow && Number.isFinite(flow) && flow > 0 ? flow : undefined);
-    res.send(forecastPage(f, getData(), weekAhead(), banner));
+    res.send(forecastPage(f, weekAhead(), banner));
   } catch (e) {
     res.send(emptyPage((e as Error).message, banner));
   }

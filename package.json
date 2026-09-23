@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "dev": "tsc -p tsconfig.json && node dist/server.js",
+    "watch": "tsc -p tsconfig.json --incremental && (tsc -p tsconfig.json --incremental --noEmitOnError --watch --preserveWatchOutput & node --watch dist/server.js)",
     "backtest": "tsc -p tsconfig.json && node dist/backtest.js"
   },
   "engines": {

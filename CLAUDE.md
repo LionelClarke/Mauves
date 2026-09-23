@@ -51,7 +51,7 @@ Mauves-sur-Loire (France). Owner: Lionel. Language of the UI: English.
 - `src/level.ts` week simulation (`/simulate`): the continuous Mauves level from the Saint-Nazaire tide and the flow
   (see below); `src/backtest.ts` scores it on every week of the record (`npm run backtest`, `VARIANTS` env to compare options)
 - `src/jobs.ts` background downloads and refits (every 30 min)
-- `src/chart.ts` SVG gauge staff and level chart; `src/views.ts` HTML pages; `src/server.ts` Express routes
+- `src/chart.ts` SVG gauge staff and week charts (level, Montjean flow); `src/views.ts` HTML pages; `src/server.ts` Express routes
 - `old/` the earlier Python prototype (`vague_mauves.py`), kept for reference only; not used.
 - `maregraphie/` SHOM tide-gauge files (SensorML `.sml` + yearly JSON, ~50 MB each). Don't `cat`
   the JSON files whole.
@@ -107,10 +107,12 @@ with real flow); wave or not right 92 %. Most error is the unknown future flow; 
 - `OFFLINE=1` disables downloads (gauge files in `maregraphie/` are still read). For a local run against a copy of the data:
   `OFFLINE=1 DATA_DIR=./data PORT=3001 npm run dev`.
 - In Docker, Claude Code runs in its own container (`claude` service, `Dockerfile.claude`, `./build.sh` then
-  `./claude.sh`), with the website's data read-only at `/data` and the site at http://wave:3000. It can't restart the
-  site: after editing code the user runs `docker compose restart wave` on the host (it rebuilds on start).
+  `./claude.sh`), with the website's data read-only at `/data` and the site at http://wave:3000. The site runs
+  `npm run watch` (`tsc --watch` + `node --watch`), so it recompiles and restarts by itself when `src/` changes; a
+  compile error leaves the last good build running. Changes to `docker-compose.yml` or `package.json` need
+  `docker compose up -d wave` on the host.
   After adding npm packages: `docker compose up -d --build -V` and `./build.sh`.
-- Check changes with `npx tsc --noEmit` before restarting. There are no tests and no linter;
+- Check changes with `npx tsc --noEmit` (the site picks up edits as soon as they compile). There are no tests and no linter;
   `tsc` is the only check.
 - ESM with `NodeNext` resolution: relative imports must end in `.js` (e.g. `./config.js`).
 

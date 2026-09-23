@@ -1,10 +1,10 @@
 /** HTML pages (server-rendered). */
 import { LOWER, UPPER } from "./config.js";
 import type { Almanac } from "./almanac.js";
-import { gaugeStaff, levelChart, simulationCharts } from "./chart.js";
+import { gaugeStaff, simulationCharts } from "./chart.js";
 import type { Score } from "./backtest.js";
 import type { WeekView } from "./level.js";
-import type { Data, Forecast, ForecastRow, Model, SessionCheck } from "./model.js";
+import type { Forecast, ForecastRow, Model, SessionCheck } from "./model.js";
 import { dayLabel, fmt, hm, local } from "./time.js";
 
 export const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) =>
@@ -40,7 +40,6 @@ p{max-width:68ch}
 .chart-wrap{margin-top:28px}.chart{width:100%;min-width:720px;height:auto;background:var(--paper);display:block}
 .chart .grid{stroke:var(--rule);stroke-width:1} .chart .axis{font:12px var(--text);fill:var(--silt)}
 .chart .obs{fill:none;stroke:var(--loire);stroke-width:2.2} .chart .now{stroke:var(--ink);stroke-dasharray:4 4}
-.chart .low{fill:var(--paper);stroke:var(--ink);stroke-width:2} .chart .err{stroke:var(--ink);stroke-width:1.5}
 .scroll{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;margin-top:8px}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
@@ -97,7 +96,7 @@ const win = (w: [number, number] | null) => w ? `${hm(w[0])} to ${hm(w[1])}` : "
 
 function rowClass(r: ForecastRow) { return r.status === "observed" ? "obs" : r.prob >= 0.6 ? "yes" : r.prob >= 0.4 ? "maybe" : ""; }
 
-export function forecastPage(f: Forecast, d: Data, sim: WeekView | null, banner?: { text: string; error?: boolean }): string {
+export function forecastPage(f: Forecast, sim: WeekView | null, banner?: { text: string; error?: boolean }): string {
   const falling = (f.now?.trend ?? 0) < -0.005;
   const inBand = f.now && f.now.h < UPPER && f.now.h >= LOWER && falling;
   const nowLine = f.now ? `Now ${f.now.h.toFixed(2)} m and ${falling ? "falling" : f.now.trend > 0.005 ? "rising" : "steady"} at ${hm(f.now.t)}. ${inBand ? "The wave is working." : "No wave right now."}` : "No gauge reading yet.";
@@ -125,15 +124,10 @@ export function forecastPage(f: Forecast, d: Data, sim: WeekView | null, banner?
       <button type="submit">Recalculate</button>${f.flowGiven ? ` <a href="/">Use current flow</a>` : ""}</form>
     ${f.extrapolated ? `<p class="warn">This flow is outside the range seen in calibration (${m.qRange[0].toFixed(0)}–${m.qRange[1].toFixed(0)} m³/s), so the forecast is extrapolated.</p>` : ""}
   </div></section>
-  <div class="scroll chart-wrap">${levelChart(f, d)}</div>
-  <h2>Coming low tides</h2>
+  ${sim ? `<h2>Time of the Mauves Wave</h2>
+  ${simulationBlock(sim, false, false)}` : ""}
   <div class="scroll"><table><thead><tr><th>Day</th><th>Wave</th><th>Chance</th><th>Min. level</th><th>Low at Mauves</th><th>Coef.</th><th>Low water St-Nazaire</th><th>Flow used (m³/s)</th></tr></thead>
   <tbody>${rows}</tbody></table></div>
-  ${sim ? `<h2>Level for the week</h2>
-  <p>The level at Mauves from midnight today, simulated from the Saint-Nazaire tide, the Montjean flow and its trend, and the
-  level yesterday. It follows every tide, rising and falling; the wave times in the table above come from the falling-tide model, which is more precise.
-  Its error grows through the week, mostly from not knowing the flow to come: see <a href="/simulate">Simulation</a> for how it did on past weeks.</p>
-  ${simulationBlock(sim, false)}` : ""}
   <p class="note">The wave works on the falling tide only, while the Mauves gauge is between ${UPPER} and ${LOWER} m. Times are local.
   Model: ${m.nEvents} past low tides; minimum level ±${(m.rmseHmin * 100).toFixed(0)} cm,
   time of the low ±${Math.round(m.rmseLowMin)} min${v.startRmseMin !== null ? `, wave start ±${v.startRmseMin.toFixed(0)} min, end ±${v.endRmseMin!.toFixed(0)} min` : ""}.
@@ -262,7 +256,7 @@ const SIM_SCRIPT = `(() => {
 
 /** The simulated week chart with its legend and hover readout. Without the real flow (a forecast),
  *  the run with the real flow is left out: past now it is the same as the simulation. */
-function simulationBlock(v: WeekView, withRealFlow = true): string {
+function simulationBlock(v: WeekView, withRealFlow = true, withFlow = true): string {
   type Col = [string, number, string, (p: WeekView["points"][number]) => number];
   const all: Col[] = [["Real", 2, " m", (p) => p.real], ["Simulated", 2, " m", (p) => p.sim],
     ["With real flow", 2, " m", (p) => p.simReal], ["Flow used", 0, " m³/s", (p) => p.qAssumed], ["Real flow", 0, " m³/s", (p) => p.qReal]];
@@ -271,7 +265,7 @@ function simulationBlock(v: WeekView, withRealFlow = true): string {
     p: v.points.map((p) => [fmt(p.t, "ccc d HH:mm"), ...cols.map(([, , , get]) => { const x = get(p); return Number.isFinite(x) ? Math.round(x * 100) / 100 : null; })]) };
   return `<div class="legend"><span>${key("obs")}Real (Mauves gauge)</span><span>${key("sim")}Simulated</span>
     ${withRealFlow ? `<span>${key("sim-real")}Simulated with the real flow</span>` : ""}<span>${swatch("win-sim")}Simulated wave</span><span>${swatch("win-obs")}Real wave</span></div>
-  <div class="scroll chart-wrap" style="margin-top:0">${simulationCharts(v, withRealFlow)}</div>
+  <div class="scroll chart-wrap" style="margin-top:0">${simulationCharts(v, withRealFlow, withFlow)}</div>
   <script type="application/json" id="simdata">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>
   <script>${SIM_SCRIPT}</script>`;
 }

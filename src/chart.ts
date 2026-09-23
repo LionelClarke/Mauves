@@ -1,9 +1,8 @@
-/** Server-side SVG: the gauge staff and the level chart. */
-import { DAY, HOUR, LOWER, TZ, UPPER } from "./config.js";
+/** Server-side SVG: the gauge staff and the week charts. */
+import { LOWER, TZ, UPPER } from "./config.js";
 import { DateTime } from "luxon";
 import type { WeekView } from "./level.js";
-import type { Data, Forecast } from "./model.js";
-import { fmt, hm } from "./time.js";
+import { fmt } from "./time.js";
 
 const f1 = (x: number) => x.toFixed(1);
 
@@ -32,35 +31,6 @@ export function gaugeStaff(level: number | null, falling: boolean): string {
     <rect x="${x0}" y="12" width="${sw}" height="${H - 24}" fill="var(--staff)"/>${ticks}${band}${water}</svg>`;
 }
 
-/** Level at Mauves over the last day and a half, with the coming wave windows. */
-export function levelChart(f: Forecast, d: Data): string {
-  const W = 960, H = 300, L = 48, R = 12, T = 14, B = 34, now = Date.now();
-  const t0 = now - 36 * HOUR, t1 = now + 3 * DAY;
-  const pts: [number, number][] = [];
-  const [i0, i1] = d.H.range(t0, now);
-  for (let i = i0; i <= i1; i += 2) if (!Number.isNaN(d.H.v[i])) pts.push([d.H.time(i), d.H.v[i]]);
-  const rows = f.rows.filter((r) => r.tmin > t0 && r.tmin < t1);
-  const vals = [...pts.map((p) => p[1]), ...rows.map((r) => r.hmin), UPPER, LOWER];
-  const lo = Math.floor(Math.min(...vals) * 2) / 2 - 0.25, hi = Math.ceil(Math.max(...vals) * 2) / 2 + 0.25;
-  const x = (t: number) => L + (t - t0) / (t1 - t0) * (W - L - R);
-  const y = (m: number) => T + (hi - m) / (hi - lo) * (H - T - B);
-  let g = `<rect x="${L}" y="${f1(y(UPPER))}" width="${W - L - R}" height="${f1(y(LOWER) - y(UPPER))}" fill="var(--staff)" opacity="0.28"/>`;
-  for (let m = Math.ceil(lo * 2) / 2; m <= hi; m += 0.5) g += `<line x1="${L}" x2="${W - R}" y1="${f1(y(m))}" y2="${f1(y(m))}" class="grid"/><text x="${L - 6}" y="${f1(y(m) + 4)}" text-anchor="end" class="axis">${m.toFixed(1)}</text>`;
-  for (let t = Math.ceil(t0 / DAY) * DAY; t < t1; t += DAY) {
-    g += `<line x1="${f1(x(t))}" x2="${f1(x(t))}" y1="${T}" y2="${H - B}" class="grid"/><text x="${f1(x(t) + 4)}" y="${H - B + 16}" class="axis">${fmt(t, "ccc d")}</text>`;
-  }
-  for (const r of rows) {
-    if (r.window) g += `<rect x="${f1(x(r.window[0]))}" y="${f1(y(UPPER))}" width="${f1(Math.max(2, x(r.window[1]) - x(r.window[0])))}" height="${f1(y(LOWER) - y(UPPER))}" fill="var(--staff)"/>`;
-    if (r.status === "forecast") {
-      const s = f.model.rmseHmin;
-      g += `<line x1="${f1(x(r.tmin))}" x2="${f1(x(r.tmin))}" y1="${f1(y(r.hmin + s))}" y2="${f1(y(r.hmin - s))}" class="err"/><circle cx="${f1(x(r.tmin))}" cy="${f1(y(r.hmin))}" r="4" class="low"/>`;
-    }
-  }
-  if (pts.length) g += `<polyline points="${pts.map((p) => `${f1(x(p[0]))},${f1(y(p[1]))}`).join(" ")}" class="obs"/>`;
-  g += `<line x1="${f1(x(now))}" x2="${f1(x(now))}" y1="${T}" y2="${H - B}" class="now"/><text x="${f1(x(now) + 4)}" y="${T + 10}" class="axis">now ${hm(now)}</text>`;
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mauves level, last 36 hours and forecast lows for 3 days">${g}</svg>`;
-}
-
 /** Local midnights from a to b. */
 function midnights(a: number, b: number): number[] {
   const out: number[] = [];
@@ -77,18 +47,24 @@ const path = (pts: [number, number][]) => {
   return s;
 };
 
-/** A simulated week against the gauge: level chart and, below it, the Montjean flow (assumed and real).
- *  Geometry is shared with the hover script through data attributes. */
-export function simulationCharts(v: WeekView, withRealFlow = true): string {
-  const W = 960, L = 52, R = 14, T = 14, H = 330, B = 30, FH = 150, FB = 30;
+/** Horizontal geometry shared by the week charts, so the level and flow charts line up. */
+function weekFrame(v: WeekView) {
+  const W = 960, L = 52, R = 14, T = 14;
   const x = (t: number) => L + (t - v.t0) / (v.t1 - v.t0) * (W - L - R);
-  const vals = v.points.flatMap((p) => withRealFlow ? [p.real, p.sim, p.simReal] : [p.real, p.sim]).filter(Number.isFinite);
-  const lo = Math.floor(Math.min(...vals, LOWER) * 2) / 2 - 0.25, hi = Math.ceil(Math.max(...vals, UPPER) * 2) / 2 + 0.25;
-  const y = (m: number) => T + (hi - m) / (hi - lo) * (H - T - B);
   const days = midnights(v.t0, v.t1);
   const gridX = (bottom: number, top: number, labels: boolean) => days.map((t) => `<line x1="${f1(x(t))}" x2="${f1(x(t))}" y1="${top}" y2="${bottom}" class="grid"/>` +
     (labels && t < v.t1 ? `<text x="${f1(x(t) + 4)}" y="${bottom + 18}" class="axis">${fmt(t, "ccc d")}</text>` : "")).join("");
   const now = v.now > v.t0 && v.now < v.t1 ? v.now : null;
+  return { W, L, R, T, x, gridX, now };
+}
+
+/** A simulated week against the gauge: level chart and, below it unless withFlow is false, the Montjean flow.
+ *  Geometry is shared with the hover script through data attributes. */
+export function simulationCharts(v: WeekView, withRealFlow = true, withFlow = true): string {
+  const { W, L, R, T, x, gridX, now } = weekFrame(v), H = 330, B = 30;
+  const vals = v.points.flatMap((p) => withRealFlow ? [p.real, p.sim, p.simReal] : [p.real, p.sim]).filter(Number.isFinite);
+  const lo = Math.floor(Math.min(...vals, LOWER) * 2) / 2 - 0.25, hi = Math.ceil(Math.max(...vals, UPPER) * 2) / 2 + 0.25;
+  const y = (m: number) => T + (hi - m) / (hi - lo) * (H - T - B);
 
   let g = `<rect x="${L}" y="${f1(y(UPPER))}" width="${W - L - R}" height="${f1(y(LOWER) - y(UPPER))}" fill="var(--staff)" opacity="0.28"/>`;
   const step = hi - lo > 4 ? 1 : 0.5;
@@ -107,6 +83,17 @@ export function simulationCharts(v: WeekView, withRealFlow = true): string {
   if (now) g += `<line x1="${f1(x(now))}" x2="${f1(x(now))}" y1="${T}" y2="${H - B}" class="now"/><text x="${f1(x(now) + 4)}" y="${T + 10}" class="axis">now</text>`;
   g += `<text x="${W - R - 4}" y="${f1(y(UPPER) - 5)}" text-anchor="end" class="axis">wave band ${LOWER}–${UPPER} m</text>`;
 
+  const cross = `<line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"/>`;
+  return `<div class="simchart" data-l="${L}" data-r="${R}" data-w="${W}">
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mauves level from ${fmt(v.t0, "d LLL yyyy")}: real, simulated from the start of the week${withRealFlow ? ", and simulated with the real flow" : ""}">${g}${cross}</svg>
+    ${withFlow ? `<p class="note" style="margin:14px 0 4px">Montjean flow (m³/s), shifted by the travel time to Mauves</p>
+    ${flowChart(v)}` : ""}
+    <div class="tip" hidden></div></div>`;
+}
+
+/** The Montjean flow over a simulated week: assumed by the simulation and real. */
+function flowChart(v: WeekView): string {
+  const { W, L, R, T, x, gridX, now } = weekFrame(v), FH = 150, FB = 30;
   const qs = v.points.flatMap((p) => [p.qAssumed, p.qReal]).filter(Number.isFinite);
   const qhi = niceMax(Math.max(...qs, 1)), fy = (q: number) => T + (1 - q / qhi) * (FH - T - FB);
   let fg = "";
@@ -115,13 +102,7 @@ export function simulationCharts(v: WeekView, withRealFlow = true): string {
   fg += `<path d="${path(v.points.map((p) => [x(p.t), fy(p.qReal)]))}" class="obs"/>`;
   fg += `<path d="${path(v.points.map((p) => [x(p.t), fy(p.qAssumed)]))}" class="sim"/>`;
   if (now) fg += `<line x1="${f1(x(now))}" x2="${f1(x(now))}" y1="${T}" y2="${FH - FB}" class="now"/>`;
-
-  const cross = `<line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"/>`;
-  return `<div class="simchart" data-l="${L}" data-r="${R}" data-w="${W}">
-    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mauves level from ${fmt(v.t0, "d LLL yyyy")}: real, simulated from the start of the week${withRealFlow ? ", and simulated with the real flow" : ""}">${g}${cross}</svg>
-    <p class="note" style="margin:14px 0 4px">Montjean flow (m³/s), shifted by the travel time to Mauves</p>
-    <svg class="chart flowchart" viewBox="0 0 ${W} ${FH}" role="img" aria-label="Montjean flow assumed by the simulation and the real flow">${fg}</svg>
-    <div class="tip" hidden></div></div>`;
+  return `<svg class="chart flowchart" viewBox="0 0 ${W} ${FH}" role="img" aria-label="Montjean flow assumed by the simulation and the real flow">${fg}</svg>`;
 }
 
 function niceMax(v: number): number {

@@ -17,8 +17,8 @@ services:
       - /app/node_modules
       # Gauge data, tide pages, sessions and the fitted model
       - wave-data:/data
-    # Rebuild on start, so code edits take effect with "docker compose restart"
-    command: sh -c "npm run build && npm start"
+    # Recompile and restart the server whenever a file in src/ changes
+    command: npm run watch
     restart: unless-stopped
 
   # Claude Code, in its own container. Not started by "docker compose up":

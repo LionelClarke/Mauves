@@ -57,9 +57,11 @@ It sees the website's data read-only at `/data`, and can reach the running site 
 http://wave:3000.
 
 The project folder is shared with both containers, so changes Claude makes are saved on
-your computer. To apply them to the website:
+your computer. The website recompiles and restarts by itself a second or two after a file
+in `src/` changes (`docker compose logs -f wave` shows it). Changes to
+`docker-compose.yml` or `package.json` still need:
 
-    docker compose restart wave
+    docker compose up -d wave
 
 If Claude adds npm packages, rebuild both images with fresh dependencies:
 
